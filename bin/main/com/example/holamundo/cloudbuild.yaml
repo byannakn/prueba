@@ -1,0 +1,44 @@
+steps:
+  # 1. Construir JAR con Gradle
+  - name: gradle:7.6.2-jdk17
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        chmod +x ./gradlew
+        ./gradlew clean build --no-daemon
+
+  # 2. Construir imagen Docker
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/java-backend-repo/java-hello-world:$COMMIT_SHA",
+        "."
+      ]
+
+  # 3. Subir imagen al Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/java-backend-repo/java-hello-world:$COMMIT_SHA"
+      ]
+
+  # 4. Desplegar automáticamente en Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      [
+        "run",
+        "deploy",
+        "java-hello-world",
+        "--image=us-central1-docker.pkg.dev/$PROJECT_ID/java-backend-repo/java-hello-world:$COMMIT_SHA",
+        "--region=us-central1",
+        "--platform=managed",
+        "--allow-unauthenticated"
+      ]
+
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/java-backend-repo/java-hello-world:$COMMIT_SHA"
